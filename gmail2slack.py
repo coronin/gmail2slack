@@ -13,10 +13,11 @@ from oauth2client.file import Storage
 # from pprint import pprint
 
 from apiclient.discovery import build
-from slacker import Slacker
+####from slacker import Slacker
 import os
 import sys
 import argparse
+import requests
 from oauth2client.client import AccessTokenRefreshError
 
 
@@ -29,8 +30,8 @@ except ImportError:
 
 
 class Gmail2Slack():
-    def __init__(self, config, slack):
-        self.slack = slack
+    def __init__(self, config): #, slack
+        ####self.slack = slack
         self.config = config
 
         # Check https://developers.google.com/admin-sdk/directory/v1/guides/authorizing for all available scopes
@@ -45,7 +46,7 @@ class Gmail2Slack():
 
         # Try to retrieve credentials from storage or run the flow to generate them
         parser = argparse.ArgumentParser(parents=[tools.argparser])
-        flags = parser.parse_args([])
+        flags = parser.parse_args(['--noauth_local_webserver'])
 
         credentials = None
 
@@ -120,25 +121,14 @@ class Gmail2Slack():
             from_date = arrow.get(from_ts).to('US/Eastern').format('YYYY-MM-DD HH:mm:ss ZZ')
             say = "New Email\n>From: %s\n>Date: %s\n>Subject: %s\n>\n>%s" % \
                   (headers['From'], from_date, headers['Subject'], message['snippet'])
-            self.slack.direct_message(say, self.config['slack_user_id'], self.config['slack_from'])
+            ####self.slack.direct_message(say, self.config['slack_user_id'], self.config['slack_from'])
+            r = requests.post(self.config['slack_webhook'],
+                              data={
+                                'text': say,
+                                'username': 'gmail2slack',
+                                'icon_emoji': ':ghost:'
+                              })
         self.save_state()
-
-
-class Slack():
-    def __init__(self, apikey):
-        self.slack = Slacker(apikey)
-
-    def get_name_id(self, name):
-        users = self.slack.users.list()
-        user_id = None
-        for member in users.body['members']:
-            if member['name'] == name:
-                user_id = member['id']
-                break
-        return user_id
-
-    def direct_message(self, message, user_id, slack_from):
-        self.slack.chat.post_message(user_id, message, username=slack_from)
 
 
 def main():
@@ -154,12 +144,8 @@ def main():
     except IOError:
         sys.exit("Unable to open config file %s" % args.config)
 
-    slack = Slack(config['slack_apikey'])
-    # validate config
-    if not 'slack_user_id' in config:
-        config['slack_user_id'] = slack.get_name_id(config['slack_user'])
-    if not config['slack_user_id']:
-        sys.exit("Could not find slack id for user %s" % config['slack_user'])
+    ####slack = Slack(config['slack_apikey'])
+
     # Make sure all paths are absolute
     if 'dir' not in config or not os.path.isdir(config['dir']):
         config['dir'] = os.path.basename(args.config)
@@ -169,7 +155,7 @@ def main():
     if not os.path.isfile(config['client_secret']):
         sys.exit("Unable to open client_secret file %s" % config['client_secret'])
 
-    g2s = Gmail2Slack(config, slack)
+    g2s = Gmail2Slack(config) #, slack
     if int(args.loop) > 0:
         delay = int(args.loop)
     else:

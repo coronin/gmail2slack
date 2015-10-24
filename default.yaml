@@ -1,5 +1,4 @@
-slack_apikey: foo
-slack_user: yourname
+slack_webhook: http://zzh.actin.cn:9008/hooks/no3q4eegg3ndtexegw7isp5tsc
 slack_from: gmail2slack
 client_secret: default_cs.json
 gmail2slack_pickle: default.pickle
